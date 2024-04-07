@@ -1,0 +1,4 @@
+name: qqChat
+version: '${project.version}'
+main: org.myplugin.qqchat.QqChat
+api-version: '1.20'
