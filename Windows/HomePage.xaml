@@ -10,15 +10,10 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Grid>
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="300">
-            <TextBlock Text="Select a Process:" Margin="0,0,0,10"/>
-            <ComboBox x:Name="ProcessComboBox" Width="300" Margin="0,20,0,20"/>
-            <TextBlock Text="Memory Address:" Margin="0,0,0,10"/>
-            <TextBox x:Name="AddressTextBox" Width="300" Margin="0,0,0,20"/>
-            <Button Content="Read Memory" Click="OnReadMemoryClick" Margin="0,0,0,20"/>
-            <TextBlock x:Name="CurrentValueTextBlock" Text="Current Value:" Margin="0,0,0,10"/>
-            <TextBox x:Name="NewValueTextBox" Width="300" Margin="0,0,0,20"/>
-            <Button Content="Write Memory" Click="OnWriteMemoryClick" />
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+            <InfoBar x:Name="InfoBar" IsOpen="False" Severity="Error" CloseButtonClick="InfoBar_CloseButtonClick" />
+            <TextBlock x:Name="SunValueTextBlock" Text="当前阳光值: "/>
+            <Button Content="修改阳光值为9000" Click="ModifySun_Click"/>
         </StackPanel>
     </Grid>
 </Page>

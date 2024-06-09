@@ -14,6 +14,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Timers;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -25,113 +26,183 @@ namespace SimpleWinUI
     /// </summary>
     public sealed partial class HomePage : Page
     {
+        private int baseAddress = 0x006A9EC0;          // 游戏内存基址
+        private string processName = "PlantsVsZombies";// 游戏进程名字
+        private Timer processCheckTimer;
+        private Timer sunValueUpdateTimer;
+        private bool processDetected = false;
+
         public HomePage()
         {
             this.InitializeComponent();
-            LoadForegroundProcesses();
+
+            // 初始化定时器，每秒检测一次进程
+            processCheckTimer = new Timer(1000);
+            processCheckTimer.Elapsed += ProcessCheckTimer_Elapsed;
+            processCheckTimer.Start();
+
+            // 初始化定时器，每秒更新一次阳光值
+            sunValueUpdateTimer = new Timer(1000);
+            sunValueUpdateTimer.Elapsed += SunValueUpdateTimer_Elapsed;
         }
 
-        private void LoadForegroundProcesses()
+        private void ProcessCheckTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            var processes = Process.GetProcesses()
-                .Where(p => !string.IsNullOrWhiteSpace(p.MainWindowTitle))
-                .OrderBy(p => p.ProcessName)
-                .ToList();
+            bool isProcessDetected = IsProcessRunning(processName);
 
-            ProcessComboBox.ItemsSource = processes;
-            ProcessComboBox.DisplayMemberPath = "MainWindowTitle";
-            ProcessComboBox.SelectedValuePath = "Id";
-        }
-
-        private void OnReadMemoryClick(object sender, RoutedEventArgs e)
-        {
-            var selectedProcess = ProcessComboBox.SelectedItem as Process;
-            if (selectedProcess != null && int.TryParse(AddressTextBox.Text, System.Globalization.NumberStyles.HexNumber, null, out int address))
+            if (isProcessDetected && !processDetected)
             {
-                try
+                processDetected = true;
+                sunValueUpdateTimer.Start();
+                DispatcherQueue.TryEnqueue(() =>
                 {
-                    IntPtr processHandle = OpenProcess(ProcessAccessFlags.VirtualMemoryRead | ProcessAccessFlags.VirtualMemoryWrite, false, selectedProcess.Id);
-                    if (processHandle == IntPtr.Zero)
-                    {
-                        CurrentValueTextBlock.Text = "Error opening process";
-                        return;
-                    }
-
-                    IntPtr baseAddress = new IntPtr(address);
-                    byte[] buffer = new byte[4]; // 假设读取4字节 (一个整数)
-                    if (ReadProcessMemory(processHandle, baseAddress, buffer, buffer.Length, out int bytesRead) && bytesRead == buffer.Length)
-                    {
-                        int currentValue = BitConverter.ToInt32(buffer, 0);
-                        CurrentValueTextBlock.Text = $"Current Value: {currentValue}";
-                    }
-                    else
-                    {
-                        CurrentValueTextBlock.Text = "Error reading memory";
-                    }
-
-                    CloseHandle(processHandle);
-                }
-                catch (Exception ex)
+                    InfoBar.Title = "成功";
+                    InfoBar.Message = "进程读取成功！";
+                    InfoBar.Severity = InfoBarSeverity.Success;
+                    InfoBar.IsOpen = true;
+                });
+            }
+            else if (!isProcessDetected && processDetected)
+            {
+                processDetected = false;
+                sunValueUpdateTimer.Stop();
+                DispatcherQueue.TryEnqueue(() =>
                 {
-                    CurrentValueTextBlock.Text = $"Error: {ex.Message}";
-                }
+                    InfoBar.Title = "警告";
+                    InfoBar.Message = "未能检测到进程！";
+                    InfoBar.Severity = InfoBarSeverity.Error;
+                    InfoBar.IsOpen = true;
+                });
             }
         }
 
-        private void OnWriteMemoryClick(object sender, RoutedEventArgs e)
+        private void SunValueUpdateTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            var selectedProcess = ProcessComboBox.SelectedItem as Process;
-            if (selectedProcess != null && int.TryParse(AddressTextBox.Text, System.Globalization.NumberStyles.HexNumber, null, out int address) && int.TryParse(NewValueTextBox.Text, out int newValue))
+            DispatcherQueue.TryEnqueue(() =>
             {
-                try
-                {
-                    IntPtr processHandle = OpenProcess(ProcessAccessFlags.VirtualMemoryRead | ProcessAccessFlags.VirtualMemoryWrite, false, selectedProcess.Id);
-                    if (processHandle == IntPtr.Zero)
-                    {
-                        CurrentValueTextBlock.Text = "Error opening process";
-                        return;
-                    }
+                UpdateSunValue();
+            });
+        }
 
-                    IntPtr baseAddress = new IntPtr(address);
-                    byte[] buffer = BitConverter.GetBytes(newValue);
-                    if (WriteProcessMemory(processHandle, baseAddress, buffer, buffer.Length, out int bytesWritten) && bytesWritten == buffer.Length)
-                    {
-                        CurrentValueTextBlock.Text = "Memory write successful";
-                    }
-                    else
-                    {
-                        CurrentValueTextBlock.Text = "Error writing memory";
-                    }
+        private void ReadSun_Click(object sender, RoutedEventArgs e)
+        {
+            UpdateSunValue();
+        }
 
-                    CloseHandle(processHandle);
-                }
-                catch (Exception ex)
-                {
-                    CurrentValueTextBlock.Text = $"Error: {ex.Message}";
-                }
+        private void ModifySun_Click(object sender, RoutedEventArgs e)
+        {
+            if (!processDetected)
+            {
+                InfoBar.Title = "警告";
+                InfoBar.Message = "未能检测到进程！";
+                InfoBar.IsOpen = true;
+                return;
+            }
+
+            int address = ReadMemoryValue(baseAddress); // 读取基址
+            address = address + 0x768;                  // 获取2级地址
+            address = ReadMemoryValue(address);
+            address = address + 0x5560;                 // 获取存放阳光数值的地址
+            WriteMemory(address, 9000);                // 写入阳光值
+        }
+
+        private void UpdateSunValue()
+        {
+            if (processDetected)
+            {
+                int address = ReadMemoryValue(baseAddress); // 读取基址
+                address = address + 0x768;                  // 获取2级地址
+                address = ReadMemoryValue(address);
+                address = address + 0x5560;                 // 获取存放阳光数值的地址
+                int sunValue = ReadMemoryValue(address);    // 读取阳光值
+
+                SunValueTextBlock.Text = $"当前阳光值: {sunValue}";
             }
         }
 
-        [Flags]
-        public enum ProcessAccessFlags : uint
+        // InfoBar关闭按钮事件
+        private void InfoBar_CloseButtonClick(InfoBar sender, object args)
         {
-            VirtualMemoryRead = 0x0010,
-            VirtualMemoryWrite = 0x0020,
-            VirtualMemoryOperation = 0x0008,
-            QueryInformation = 0x0400,
-            ReadWrite = VirtualMemoryRead | VirtualMemoryWrite | VirtualMemoryOperation
+            if (processDetected)
+            {
+                InfoBar.IsOpen = false;
+            }
         }
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern IntPtr OpenProcess(ProcessAccessFlags processAccess, bool bInheritHandle, int processId);
+        // 检查进程是否运行
+        private bool IsProcessRunning(string processName)
+        {
+            Process[] processes = Process.GetProcessesByName(processName);
+            return processes.Length > 0;
+        }
+
+        public int ReadMemoryValue(int baseAdd)
+        {
+            try
+            {
+                return Helper.ReadMemoryValue(baseAdd, processName);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        public void WriteMemory(int baseAdd, int value)
+        {
+            try
+            {
+                Helper.WriteMemoryValue(baseAdd, processName, value);
+            }
+            catch
+            {
+                InfoBar.Title = "错误";
+                InfoBar.Message = "写内存失败！";
+                InfoBar.IsOpen = true;
+            }
+        }
+    }
+
+    public static class Helper
+    {
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+
+        [DllImport("kernel32.dll")]
+        private static extern bool ReadProcessMemory(IntPtr hProcess, int lpBaseAddress, byte[] lpBuffer, int dwSize, ref int lpNumberOfBytesRead);
+
+        [DllImport("kernel32.dll")]
+        private static extern bool WriteProcessMemory(IntPtr hProcess, int lpBaseAddress, byte[] lpBuffer, int dwSize, ref int lpNumberOfBytesWritten);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int dwSize, out int lpNumberOfBytesRead);
+        private static extern bool CloseHandle(IntPtr hObject);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int dwSize, out int lpNumberOfBytesWritten);
+        private const int PROCESS_WM_READ = 0x0010;
+        private const int PROCESS_WM_WRITE = 0x0020;
+        private const int PROCESS_VM_OPERATION = 0x0008;
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern bool CloseHandle(IntPtr hObject);
+        public static int ReadMemoryValue(int baseAdd, string processName)
+        {
+            Process process = Process.GetProcessesByName(processName)[0];
+            IntPtr processHandle = OpenProcess(PROCESS_WM_READ, false, process.Id);
+
+            byte[] buffer = new byte[4];
+            int bytesRead = 0;
+            ReadProcessMemory(processHandle, baseAdd, buffer, buffer.Length, ref bytesRead);
+            CloseHandle(processHandle);
+
+            return BitConverter.ToInt32(buffer, 0);
+        }
+
+        public static void WriteMemoryValue(int baseAdd, string processName, int value)
+        {
+            Process process = Process.GetProcessesByName(processName)[0];
+            IntPtr processHandle = OpenProcess(PROCESS_VM_OPERATION | PROCESS_WM_WRITE, false, process.Id);
+
+            byte[] buffer = BitConverter.GetBytes(value);
+            int bytesWritten = 0;
+            WriteProcessMemory(processHandle, baseAdd, buffer, buffer.Length, ref bytesWritten);
+            CloseHandle(processHandle);
+        }
     }
 }
