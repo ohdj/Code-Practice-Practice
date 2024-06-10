@@ -31,6 +31,8 @@ namespace SimpleWinUI
         private Timer processCheckTimer;
         private Timer sunValueUpdateTimer;
         private bool processDetected = false;
+        private bool isSunLocked = false;
+        private int lockedSunValue = 99999;
 
         public HomePage()
         {
@@ -68,7 +70,7 @@ namespace SimpleWinUI
                 sunValueUpdateTimer.Stop();
                 DispatcherQueue.TryEnqueue(() =>
                 {
-                    InfoBar.Title = "警告";
+                    InfoBar.Title = "错误";
                     InfoBar.Message = "未能检测到进程！";
                     InfoBar.Severity = InfoBarSeverity.Error;
                     InfoBar.IsOpen = true;
@@ -80,30 +82,74 @@ namespace SimpleWinUI
         {
             DispatcherQueue.TryEnqueue(() =>
             {
+                if (processDetected && isSunLocked)
+                {
+                    int address = ReadMemoryValue(baseAddress); // 读取基址
+                    address = address + 0x768;                  // 获取2级地址
+                    address = ReadMemoryValue(address);
+                    address = address + 0x5560;                 // 获取存放阳光数值的地址
+                    WriteMemory(address, lockedSunValue);       // 锁定阳光值
+                }
                 UpdateSunValue();
             });
         }
 
-        private void ReadSun_Click(object sender, RoutedEventArgs e)
-        {
-            UpdateSunValue();
-        }
-
-        private void ModifySun_Click(object sender, RoutedEventArgs e)
+        private async void ModifySun_Click(object sender, RoutedEventArgs e)
         {
             if (!processDetected)
             {
-                InfoBar.Title = "警告";
+                InfoBar.Title = "错误";
                 InfoBar.Message = "未能检测到进程！";
                 InfoBar.IsOpen = true;
                 return;
             }
 
+            if (int.TryParse(SunInputTextBox.Text, out int sunValue))
+            {
+                lockedSunValue = sunValue;
+                int address = ReadMemoryValue(baseAddress); // 读取基址
+                address = address + 0x768;                  // 获取2级地址
+                address = ReadMemoryValue(address);
+                address = address + 0x5560;                 // 获取存放阳光数值的地址
+                WriteMemory(address, sunValue);             // 写入阳光值
+
+                SunValueTextBlock.Text = $"阳光值已修改为: {sunValue}";
+            }
+            else
+            {
+                ContentDialog invalidValueDialog = new ContentDialog
+                {
+                    Title = "错误",
+                    Content = "请输入有效的阳光值！",
+                    CloseButtonText = "确定",
+                    XamlRoot = this.Content.XamlRoot  // 设置XamlRoot属性
+                };
+
+                _ = await invalidValueDialog.ShowAsync();
+            }
+        }
+
+        private void LockSunCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            isSunLocked = true;
+            // 禁用输入框和按钮
+            SunInputTextBox.IsEnabled = false;
+            ModifySunButton.IsEnabled = false;
+            // 设置阳光值为99999
+            lockedSunValue = 99999;
             int address = ReadMemoryValue(baseAddress); // 读取基址
             address = address + 0x768;                  // 获取2级地址
             address = ReadMemoryValue(address);
             address = address + 0x5560;                 // 获取存放阳光数值的地址
-            WriteMemory(address, 9000);                // 写入阳光值
+            WriteMemory(address, lockedSunValue);       // 写入阳光值
+        }
+
+        private void LockSunCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            isSunLocked = false;
+            // 启用输入框和按钮
+            SunInputTextBox.IsEnabled = true;
+            ModifySunButton.IsEnabled = true;
         }
 
         private void UpdateSunValue()
@@ -120,7 +166,6 @@ namespace SimpleWinUI
             }
         }
 
-        // InfoBar关闭按钮事件
         private void InfoBar_CloseButtonClick(InfoBar sender, object args)
         {
             if (processDetected)
@@ -129,7 +174,6 @@ namespace SimpleWinUI
             }
         }
 
-        // 检查进程是否运行
         private bool IsProcessRunning(string processName)
         {
             Process[] processes = Process.GetProcessesByName(processName);
@@ -148,7 +192,7 @@ namespace SimpleWinUI
             }
         }
 
-        public void WriteMemory(int baseAdd, int value)
+        public async void WriteMemory(int baseAdd, int value)
         {
             try
             {
@@ -156,9 +200,15 @@ namespace SimpleWinUI
             }
             catch
             {
-                InfoBar.Title = "错误";
-                InfoBar.Message = "写内存失败！";
-                InfoBar.IsOpen = true;
+                ContentDialog writeMemoryErrorDialog = new ContentDialog
+                {
+                    Title = "错误",
+                    Content = "写内存失败！",
+                    CloseButtonText = "确定",
+                    XamlRoot = this.Content.XamlRoot  // 设置XamlRoot属性
+                };
+
+                _ = await writeMemoryErrorDialog.ShowAsync();
             }
         }
     }
