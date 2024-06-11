@@ -11,7 +11,7 @@
 
     <Grid>
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
-            <InfoBar x:Name="InfoBar" IsOpen="False" Severity="Error" CloseButtonClick="InfoBar_CloseButtonClick"/>
+            <InfoBar x:Name="InfoBar" IsOpen="False" CloseButtonClick="InfoBar_CloseButtonClick"/>
             <TextBlock x:Name="SunValueTextBlock" Text="当前阳光值: "/>
             <TextBox x:Name="SunInputTextBox" PlaceholderText="输入阳光值"/>
             <Button x:Name="ModifySunButton" Content="修改阳光值" Click="ModifySun_Click"/>
