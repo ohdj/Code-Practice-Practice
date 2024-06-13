@@ -15,7 +15,7 @@ namespace SimpleWinUI
         public Timer ProcessCheckTimer { get; private set; }
         public Timer SunValueUpdateTimer { get; private set; }
         public bool ProcessDetected { get; set; }
-        private bool isSunLocked = false;
+        public bool isSunLocked = false;
         private int lockedSunValue = 99999;
         private IProcessState currentState;
 
@@ -23,13 +23,16 @@ namespace SimpleWinUI
         {
             this.InitializeComponent();
 
+            // 创建和初始化 SunValueUpdateTimer
+            SunValueUpdateTimer = new Timer(1000);
+            SunValueUpdateTimer.Elapsed += SunValueUpdateTimer_Elapsed;
+
+            // 检查进程状态定时器
             ProcessCheckTimer = new Timer(1000);
             ProcessCheckTimer.Elapsed += ProcessCheckTimer_Elapsed;
             ProcessCheckTimer.Start();
 
-            SunValueUpdateTimer = new Timer(1000);
-            SunValueUpdateTimer.Elapsed += SunValueUpdateTimer_Elapsed;
-
+            // 初始状态为进程未检测到
             SetState(new ProcessNotDetectedState());
         }
 
@@ -80,10 +83,10 @@ namespace SimpleWinUI
         {
             if (!ProcessDetected)
             {
-                InfoBar.Title = "错误";
-                InfoBar.Message = "未能检测到进程！";
-                InfoBar.Severity = InfoBarSeverity.Error;
-                InfoBar.IsOpen = true;
+                SetInfoBarTitle("错误");
+                SetInfoBarMessage("未能检测到进程！");
+                SetInfoBarSeverity(InfoBarSeverity.Error);
+                SetInfoBarIsOpen(true);
                 return;
             }
 
@@ -116,10 +119,10 @@ namespace SimpleWinUI
         {
             if (!ProcessDetected)
             {
-                InfoBar.Title = "错误";
-                InfoBar.Message = "未能检测到进程！";
-                InfoBar.Severity = InfoBarSeverity.Error;
-                InfoBar.IsOpen = true;
+                SetInfoBarTitle("错误");
+                SetInfoBarMessage("未能检测到进程！");
+                SetInfoBarSeverity(InfoBarSeverity.Error);
+                SetInfoBarIsOpen(true);
                 LockSunCheckBox.IsChecked = false;
                 return;
             }
@@ -140,6 +143,12 @@ namespace SimpleWinUI
             isSunLocked = false;
             SunInputTextBox.IsEnabled = true;
             ModifySunButton.IsEnabled = true;
+
+            // 更新状态以确保控件状态正确
+            if (ProcessDetected)
+            {
+                UpdateControlsState(true);
+            }
         }
 
         public void UpdateControlsState(bool isEnabled)
@@ -172,6 +181,38 @@ namespace SimpleWinUI
         {
             Process[] processes = Process.GetProcessesByName(processName);
             return processes.Length > 0;
+        }
+
+        // 在这里添加公共方法，用于更新InfoBar标题
+        public void SetInfoBarTitle(string title)
+        {
+            DispatcherQueue.TryEnqueue(() => {
+                InfoBar.Title = title;
+            });
+        }
+
+        // 添加公共方法，用于更新InfoBar消息
+        public void SetInfoBarMessage(string message)
+        {
+            DispatcherQueue.TryEnqueue(() => {
+                InfoBar.Message = message;
+            });
+        }
+
+        // 添加公共方法，用于更新InfoBar严重性
+        public void SetInfoBarSeverity(InfoBarSeverity severity)
+        {
+            DispatcherQueue.TryEnqueue(() => {
+                InfoBar.Severity = severity;
+            });
+        }
+
+        // 添加公共方法，用于打开或关闭InfoBar
+        public void SetInfoBarIsOpen(bool isOpen)
+        {
+            DispatcherQueue.TryEnqueue(() => {
+                InfoBar.IsOpen = isOpen;
+            });
         }
     }
 }

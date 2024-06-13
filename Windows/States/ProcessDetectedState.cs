@@ -13,14 +13,20 @@ namespace SimpleWinUI.States
         {
             context.ProcessDetected = true;
             context.SunValueUpdateTimer.Start();
-            context.DispatcherQueue.TryEnqueue(() =>
+            context.SetInfoBarTitle("成功");
+            context.SetInfoBarMessage("进程读取成功！");
+            context.SetInfoBarSeverity(InfoBarSeverity.Success);
+            context.SetInfoBarIsOpen(true);
+
+            if (!context.isSunLocked)
             {
-                context.InfoBar.Title = "成功";
-                context.InfoBar.Message = "进程读取成功！";
-                context.InfoBar.Severity = InfoBarSeverity.Success;
-                context.InfoBar.IsOpen = true;
                 context.UpdateControlsState(true);
-            });
+            }
+            else
+            {
+                context.UpdateControlsState(false);
+                context.LockSunCheckBox.IsEnabled = true; // 只启用LockSunCheckBox控件
+            }
         }
     }
 }

@@ -15,7 +15,7 @@
             <TextBlock x:Name="SunValueTextBlock" Text="当前阳光值: "/>
             <TextBox x:Name="SunInputTextBox" PlaceholderText="输入阳光值"/>
             <Button x:Name="ModifySunButton" Content="修改阳光值" Click="ModifySun_Click"/>
-            <CheckBox x:Name="LockSunCheckBox" Content="无限阳光" Checked="LockSunCheckBox_Checked" Unchecked="LockSunCheckBox_Unchecked"/>
+            <CheckBox x:Name="LockSunCheckBox" x:FieldModifier="public" Content="无限阳光" Checked="LockSunCheckBox_Checked" Unchecked="LockSunCheckBox_Unchecked"/>
         </StackPanel>
     </Grid>
 </Page>
