@@ -24,13 +24,13 @@ namespace SimpleWinUI
             this.InitializeComponent();
 
             // 创建和初始化 SunValueUpdateTimer
-            SunValueUpdateTimer = new Timer(1000);
-            SunValueUpdateTimer.Elapsed += SunValueUpdateTimer_Elapsed;
+            SunValueUpdateTimer = new Timer(1000); // 每秒触发一次
+            SunValueUpdateTimer.Elapsed += SunValueUpdateTimer_Elapsed; // 绑定事件处理程序
 
             // 检查进程状态定时器
-            ProcessCheckTimer = new Timer(1000);
-            ProcessCheckTimer.Elapsed += ProcessCheckTimer_Elapsed;
-            ProcessCheckTimer.Start();
+            ProcessCheckTimer = new Timer(1000); // 每秒检查一次是否检测到进程
+            ProcessCheckTimer.Elapsed += ProcessCheckTimer_Elapsed; // 绑定事件处理程序
+            ProcessCheckTimer.Start(); // 启动检查进程状态的定时器
 
             // 初始状态为进程未检测到
             SetState(new ProcessNotDetectedState());
@@ -65,15 +65,10 @@ namespace SimpleWinUI
 
         private void SunValueUpdateTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            if (ProcessDetected && isSunLocked)
+            if (ProcessDetected)
             {
                 DispatcherQueue.TryEnqueue(() =>
                 {
-                    int address = MemoryHelper.ReadMemoryValue(baseAddress, processName);
-                    address = address + 0x768;
-                    address = MemoryHelper.ReadMemoryValue(address, processName);
-                    address = address + 0x5560;
-                    MemoryHelper.WriteMemoryValue(address, processName, lockedSunValue);
                     UpdateSunValue();
                 });
             }
