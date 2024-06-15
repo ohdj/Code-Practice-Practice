@@ -65,10 +65,15 @@ namespace SimpleWinUI
 
         private void SunValueUpdateTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            if (ProcessDetected)
+            if (ProcessDetected && isSunLocked)
             {
                 DispatcherQueue.TryEnqueue(() =>
                 {
+                    int address = MemoryHelper.ReadMemoryValue(baseAddress, processName);
+                    address = address + 0x768;
+                    address = MemoryHelper.ReadMemoryValue(address, processName);
+                    address = address + 0x5560;
+                    MemoryHelper.WriteMemoryValue(address, processName, lockedSunValue);
                     UpdateSunValue();
                 });
             }
