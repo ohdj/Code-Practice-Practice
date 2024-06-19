@@ -6,7 +6,7 @@
 
 ## Java
 
-- mc plugin
+- [ ] Minecraft Plugin
 
 ## Windows
 
