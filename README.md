@@ -3,6 +3,7 @@
 ## Android
 
 - [ ] Jetpack Compse
+- [ ] kotlin
 
 ## Java
 
