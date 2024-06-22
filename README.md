@@ -4,6 +4,7 @@
 
 - [ ] Jetpack Compse
 - kotlin
+- 设计模式
 
 ## Java
 
