@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "org.mcmodule.mchelper.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "mcHelper.refmap.json",
+  "mixins": [
+  ],
+  "client": [
+    "MixinGameRenderer"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
